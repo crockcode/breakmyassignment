@@ -15,16 +15,19 @@
     "firebase": "^11.6.0",
     "formidable": "^3.5.2",
     "mammoth": "^1.9.0",
-    "mongodb": "^6.15.0",
+    "mongodb": "^5.9.2",
     "mongoose": "^8.13.2",
     "next": "15.3.0",
     "next-auth": "^4.24.11",
     "node-fetch": "^2.7.0",
+    "nodemailer": "^6.10.1",
     "openai": "^4.94.0",
     "pdf-parse": "^1.1.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-markdown": "^9.1.0"
+    "react-markdown": "^9.1.0",
+    "react-toastify": "^11.0.5",
+    "resend": "^4.3.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

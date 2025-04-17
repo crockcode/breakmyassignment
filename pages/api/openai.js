@@ -46,32 +46,36 @@ export default async function handler(req, res) {
     const maxTokens = AVAILABLE_MODELS[modelToUse].maxTokens;
 
     // Prepare prompt for OpenAI
-    const prompt = `You are an educational assistant analyzing an assignment document. 
-    Analyze the following assignment text and provide a structured breakdown with these clearly labeled sections:
+    const prompt = `You are an educational assistant helping a student understand their assignment.
 
-    # Assignment Overview
-    Start with a brief summary of what the assignment is about.
-
-    # Tasks Breakdown
-    Provide a detailed breakdown of all questions or tasks that need to be completed, with each task clearly numbered.
-
-    # Key Concepts
-    List the important concepts, terms, and references mentioned that will be helpful for completing the assignment.
-
-    # Time Estimate
-    Provide an estimated time to complete each part (in hours).
-
-    # Approach Strategy
-    Suggest a step-by-step approach for tackling the assignment efficiently.
-
-    # Resources Needed
-    List any specific resources, references, or tools that would be helpful.
-
-    Format your response using proper Markdown with headings, lists, and emphasis. Keep it concise, well-structured, and student-friendly.
+    Please analyze the following assignment text and return a clear, structured breakdown with the following sections using proper Markdown formatting:
+    
+    # 📄 Assignment Overview
+    Provide a short summary of what this assignment is about.
+    
+    # ✅ Tasks Breakdown
+    List and number all key tasks or questions that the student needs to complete. Keep each task concise and actionable.
+    
+    # 🎯 Key Concepts
+    Identify the important concepts, terms, or subject areas that are critical for completing the assignment.
+    
+    # ⏱️ Time Estimates
+    Estimate how much time (in hours) each task might take. List each task alongside its estimated duration.
+    
+    # 🧠 Suggested Approach
+    Outline a step-by-step strategy the student can follow to efficiently complete the assignment.
+    
+    # 📚 Helpful Resources
+    Recommend useful references, tools, websites, or reading materials that would support the completion of this assignment.
+    
+    ---
+    
+    Format your response in Markdown using headings, bullet points, and numbered lists. Keep the tone student-friendly, focused, and helpful. Avoid unnecessary repetition or fluff.
     
     Here is the assignment text:
-    ${parsedText.slice(0, 8000)}`; // Limiting text to avoid token limitations
-    
+    ${parsedText.slice(0, 8000)}
+    `;
+        
     try {
       // Call OpenAI API
       const completion = await openai.chat.completions.create({
