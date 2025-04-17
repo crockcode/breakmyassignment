@@ -4,17 +4,8 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { connectToDatabase } from '@/lib/mongodb';
 import Assignment from '@/models/Assignment';
 
-export async function GET(request, { params }) {
+export async function GET() {
   try {
-    const { id } = params;
-    
-    if (!id) {
-      return NextResponse.json(
-        { success: false, error: 'Assignment ID is required' },
-        { status: 400 }
-      );
-    }
-    
     // Connect to database
     await connectToDatabase();
     
@@ -28,28 +19,22 @@ export async function GET(request, { params }) {
       );
     }
     
-    // Find the assignment with the given ID that belongs to the current user
-    const assignment = await Assignment.findOne({
-      _id: id,
-      userId: session.user.id
-    }).lean();
-    
-    if (!assignment) {
-      return NextResponse.json(
-        { success: false, error: 'Assignment not found' },
-        { status: 404 }
-      );
-    }
+    // Find all assignments for the current user
+    const assignments = await Assignment.find({ userId: session.user.id })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean();
     
     return NextResponse.json({ 
       success: true, 
-      assignment 
+      assignments,
+      count: assignments.length
     });
     
   } catch (error) {
-    console.error('Error fetching assignment:', error);
+    console.error('Error fetching assignments:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch assignment' },
+      { success: false, error: 'Failed to fetch assignments' },
       { status: 500 }
     );
   }

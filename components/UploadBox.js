@@ -2,9 +2,11 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { storage } from '../lib/firebase';
+import { useSession } from 'next-auth/react';
 
 export default function UploadBox() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [file, setFile] = useState(null);
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -17,6 +19,7 @@ export default function UploadBox() {
   const [showFullAnalysis, setShowFullAnalysis] = useState(false);
   const [selectedModel, setSelectedModel] = useState("gpt-3.5-turbo");
   const [modelUsed, setModelUsed] = useState(null);
+  const [limitReached, setLimitReached] = useState(false);
   const analysisRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -143,51 +146,8 @@ export default function UploadBox() {
     try {
       setAnalyzing(true);
       
-      // Step 1: Parse the file
-      const parseResponse = await fetch('/api/parse', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          fileUrl,
-          fileType,
-        }),
-      });
-      
-      if (!parseResponse.ok) {
-        const errorData = await parseResponse.json();
-        throw new Error(errorData.error || 'Failed to parse file');
-      }
-      
-      const parseData = await parseResponse.json();
-      const { parsedText } = parseData;
-      
-      // Step 2: Send to OpenAI for analysis
-      const openaiResponse = await fetch('/api/openai', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          parsedText,
-          model: selectedModel
-        }),
-      });
-      
-      if (!openaiResponse.ok) {
-        const errorData = await openaiResponse.json();
-        throw new Error(errorData.error || 'Failed to analyze with OpenAI');
-      }
-      
-      const openaiData = await openaiResponse.json();
-      const { aiBreakdown, modelUsed: usedModel } = openaiData;
-      
-      // Store which model was actually used
-      setModelUsed(usedModel);
-      
-      // Step 3: Save everything to MongoDB
-      const saveResponse = await fetch('/api/save', {
+      // Step 1: Parse and analyze the file
+      const response = await fetch('/api/process-assignment', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -195,36 +155,34 @@ export default function UploadBox() {
         body: JSON.stringify({
           fileUrl,
           fileName,
-          parsedText,
-          aiBreakdown,
-          modelUsed: usedModel
+          fileType,
         }),
       });
       
-      if (!saveResponse.ok) {
-        const errorData = await saveResponse.json();
-        throw new Error(errorData.error || 'Failed to save analysis');
-      }
+      const data = await response.json();
       
-      const saveData = await saveResponse.json();
-      
-      console.log("Analysis completed and saved:", saveData);
-      
-      // Handle the case where storage failed but we still have the analysis
-      if (saveData.storageFailed) {
-        console.warn("Note: Analysis was generated but could not be saved to database:", saveData.error);
-        setAnalysis(aiBreakdown);
-        setShowFullAnalysis(true);
-        // Show a warning to the user
-        setError('Note: Your analysis was generated successfully, but could not be saved for later viewing. You may want to copy it now.');
-      } else {
-        setAnalysis(aiBreakdown);
-        setShowFullAnalysis(true);
-        
-        if (saveData.assignmentId) {
-          setAssignmentId(saveData.assignmentId);
+      if (!response.ok) {
+        // Check if the error is due to upload limit
+        if (data.limitReached) {
+          setLimitReached(true);
+          throw new Error('Monthly upload limit reached. Please upgrade to continue analyzing assignments.');
         }
+        throw new Error(data.error || 'Failed to analyze file');
       }
+      
+      // Set the analysis and ID
+      setAnalysis(data.analysis);
+      setShowFullAnalysis(true);
+      
+      if (data.assignmentId) {
+        setAssignmentId(data.assignmentId);
+      }
+      
+      // Set the model used if available
+      if (data.modelUsed) {
+        setModelUsed(data.modelUsed);
+      }
+      
     } catch (error) {
       console.error("Analysis error:", error);
       setError('Analysis failed: ' + error.message);
@@ -436,7 +394,7 @@ export default function UploadBox() {
                   ) : (
                     <>
                       <span className="relative z-10">Analyze Assignment</span>
-                      <span className="absolute inset-0 bg-gradient-to-r from-primary to-secondary opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+                      <span className="absolute inset-0 bg-gradient-to-r from-primary to-primary/80 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
                     </>
                   )}
                 </button>
@@ -723,6 +681,25 @@ export default function UploadBox() {
               </div>
             </div>
           )}
+        </div>
+      )}
+      
+      {limitReached && (
+        <div className="bg-error/10 border border-error/30 rounded-xl p-6 my-8 text-center">
+          <div className="w-16 h-16 rounded-full bg-error/20 flex items-center justify-center mx-auto mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h3 className="text-2xl font-bold text-error mb-2">Upload Limit Reached</h3>
+          <p className="text-gray-300 mb-6 max-w-md mx-auto">
+            You've used all 3 of your free monthly uploads. Upgrade to Student Pro to unlock unlimited breakdowns.
+          </p>
+          <div className="flex justify-center">
+            <a href="/pricing" className="btn btn-error">
+              Upgrade to Student Pro
+            </a>
+          </div>
         </div>
       )}
       

@@ -1,10 +1,13 @@
 @import "tailwindcss";
 
+/* Base color variables */
 :root {
-  --background: #ffffff;
-  --foreground: #291334;
+  --background: #fdf4ff; /* soft lilac background */
+  --foreground: #2a1238; /* deep plum text */
   --font-sans: var(--font-quicksand), system-ui, sans-serif;
   --font-mono: var(--font-roboto-mono), monospace;
+  --primary: #d695f9; /* lavender-pink */
+  --primary-hover: #c57df7;
 }
 
 @theme inline {
@@ -18,27 +21,44 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #171825;
-    --foreground: #f8e8ff;
+    --background: #1b1126; /* soft navy */
+    --foreground: #f9e8ff; /* light lavender */
+    --primary: #d695f9;
+    --primary-hover: #be7df2;
   }
 }
 
+/* Global typography and color base */
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
 }
 
-/* Additional cupcake theme styles */
+/* Input & textarea enhancements */
 input, select, textarea {
   border-radius: 0.75rem;
 }
 
+/* Button styling */
 .btn {
   font-weight: 600;
 }
 
-/* Custom scrollbar */
+.btn-primary {
+  background-color: var(--primary);
+  color: #ffffff;
+  border: none;
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(214, 149, 249, 0.35);
+}
+
+/* Custom scrollbars */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -58,7 +78,7 @@ input, select, textarea {
   background: #c490e0;
 }
 
-/* Basic prose styling for markdown content */
+/* Markdown-friendly prose tweaks */
 .prose {
   max-width: 65ch;
   color: inherit;
@@ -70,6 +90,7 @@ input, select, textarea {
   margin-bottom: 1rem;
   font-weight: 700;
   line-height: 1.25;
+  color: var(--primary);
 }
 
 .prose h2 {
@@ -78,6 +99,7 @@ input, select, textarea {
   margin-bottom: 0.75rem;
   font-weight: 700;
   line-height: 1.3;
+  color: var(--primary);
 }
 
 .prose h3 {
@@ -118,6 +140,7 @@ input, select, textarea {
   text-decoration: underline;
 }
 
+/* Code styling */
 code, pre {
   font-family: var(--font-mono);
 }

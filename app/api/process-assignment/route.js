@@ -3,9 +3,11 @@ import fetch from 'node-fetch';
 import pdfParse from 'pdf-parse/lib/pdf-parse.js';
 import mammoth from 'mammoth';
 import { OpenAI } from 'openai';
-import mongoose from 'mongoose';
-import { connectToDatabase } from '@/lib/mongodb';
+import { getServerSession } from "next-auth/next";
+import { connectToDatabase } from '@/lib/mongoose';
 import Assignment from '@/lib/mongodb/models/Assignment';
+import User from '@/models/User';
+import { hasReachedUploadLimit, trackUpload } from '@/lib/auth';
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -17,11 +19,28 @@ export async function POST(request) {
     // Connect to database
     await connectToDatabase();
     
+    // Get the user's session
+    const session = await getServerSession({
+      secret: process.env.NEXTAUTH_SECRET,
+    });
+    
     // Parse request body
-    const { fileUrl, fileName, fileType, userId } = await request.json();
+    const { fileUrl, fileName, fileType } = await request.json();
     
     if (!fileUrl) {
       return NextResponse.json({ error: 'File URL is required' }, { status: 400 });
+    }
+    
+    // If user is authenticated, check upload limits
+    if (session?.user?.email) {
+      const limitReached = await hasReachedUploadLimit(session.user.email);
+      
+      if (limitReached) {
+        return NextResponse.json({ 
+          error: 'Monthly upload limit reached', 
+          limitReached: true 
+        }, { status: 403 });
+      }
     }
     
     // Fetch file from Firebase URL
@@ -93,23 +112,37 @@ export async function POST(request) {
     
     const analysis = completion.choices[0].message.content;
     
+    // Use user email for userId if authenticated, otherwise 'anonymous'
+    const userId = session?.user?.email || 'anonymous';
+    
     // Save analysis to database
     const assignment = new Assignment({
       fileName,
       fileUrl,
       extractedText: extractedText.slice(0, 10000), // Limiting stored text
       analysis,
-      userId: userId || 'anonymous',
+      userId,
       createdAt: new Date()
     });
     
     await assignment.save();
     
+    // If user is authenticated, track this upload
+    if (session?.user?.email) {
+      await trackUpload(
+        session.user.email,
+        assignment._id.toString(),
+        fileName,
+        fileType
+      );
+    }
+    
     // Return the analysis
     return NextResponse.json({ 
       success: true, 
       analysis,
-      assignmentId: assignment._id 
+      assignmentId: assignment._id,
+      isAuthenticated: !!session?.user
     });
     
   } catch (error) {
